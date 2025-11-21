@@ -9,6 +9,7 @@ import { join } from 'path';
 import { tmpdir } from 'os';
 import { unlink } from 'fs/promises';
 import { extractYouTubeId } from './utils';
+import { transcribeAudio } from './video-transcription';
 
 /**
  * Fetch transcript from YouTube video
@@ -37,7 +38,29 @@ export async function fetchYouTubeTranscript(videoUrl: string): Promise<string> 
     console.log('Direct transcript fetch failed:', transcriptError);
   }
 
-  // 2. Secondary fallback: Try to get video info and use description via ytdl-core
+  // 2. NEW FALLBACK: Download audio and transcribe using Groq Whisper
+  // This handles videos without captions!
+  let audioPath: string | null = null;
+  try {
+    console.log('Attempting to download and transcribe audio (fallback)...');
+    audioPath = await downloadYouTubeAudio(videoUrl);
+    console.log(`Audio downloaded to ${audioPath}, starting transcription...`);
+
+    const transcription = await transcribeAudio(audioPath);
+
+    if (transcription && transcription.trim().length > 50) {
+      console.log(`Successfully transcribed YouTube audio, ${transcription.length} characters`);
+      return transcription;
+    }
+  } catch (transcriptionError) {
+    console.error('Audio transcription fallback failed:', transcriptionError);
+  } finally {
+    if (audioPath) {
+      await cleanupAudioFile(audioPath);
+    }
+  }
+
+  // 3. Secondary fallback: Try to get video info and use description via ytdl-core
   try {
     console.log('Transcript not available, trying to get video information via ytdl-core...');
     const info = await ytdl.getInfo(videoUrl);
@@ -64,7 +87,7 @@ export async function fetchYouTubeTranscript(videoUrl: string): Promise<string> 
     console.error('ytdl-core failed:', error);
   }
 
-  // 3. Tertiary fallback: Raw HTML fetch (cheerio-style regex)
+  // 4. Tertiary fallback: Raw HTML fetch (cheerio-style regex)
   try {
     console.log('Trying raw HTML fetch for metadata...');
     const response = await fetch(videoUrl, {
@@ -117,16 +140,19 @@ export async function downloadYouTubeAudio(videoUrl: string): Promise<string> {
         return;
       }
 
-      const outputPath = join(tmpdir(), `youtube-audio-${videoId}-${Date.now()}.mp4`);
-      const video = ytdl(videoUrl, {
+      // Use mp3 extension for better compatibility with Whisper
+      const outputPath = join(tmpdir(), `youtube-audio-${videoId}-${Date.now()}.mp3`);
+
+      // Get audio stream
+      const stream = ytdl(videoUrl, {
         quality: 'lowestaudio',
         filter: 'audioonly',
       });
 
       const writeStream = createWriteStream(outputPath);
-      video.pipe(writeStream);
+      stream.pipe(writeStream);
 
-      video.on('error', (error) => {
+      stream.on('error', (error) => {
         reject(new Error(`Failed to download audio: ${error.message}`));
       });
 

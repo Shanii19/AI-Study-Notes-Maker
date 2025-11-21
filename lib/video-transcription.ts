@@ -77,7 +77,7 @@ async function extractAudioFromVideo(videoPath: string): Promise<string> {
 /**
  * Transcribe audio file using Groq Whisper API
  */
-async function transcribeAudio(audioPath: string): Promise<string> {
+export async function transcribeAudio(audioPath: string): Promise<string> {
     try {
         const client = getGroqClient();
 
