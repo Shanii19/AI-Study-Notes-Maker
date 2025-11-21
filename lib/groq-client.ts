@@ -146,7 +146,7 @@ ${truncatedText}
 
 Generate the study notes now.`;
 
-    console.log(`Sending request to Groq (Model: llama-3.3-70b-versatile, Input length: ${truncatedText.length} chars)...`);
+    console.log(`Sending request to Groq (Model: llama-3.1-8b-instant, Input length: ${truncatedText.length} chars)...`);
 
     try {
       const completion = await client.chat.completions.create({
@@ -154,9 +154,9 @@ Generate the study notes now.`;
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt },
         ],
-        model: 'llama-3.3-70b-versatile', // 128k context window
+        model: 'llama-3.1-8b-instant', // Faster, more efficient model for free tier
         temperature: 0.5,
-        max_tokens: detailLevel === 'detailed' ? 8000 : 4096, // Increased for detailed mode
+        max_tokens: detailLevel === 'detailed' ? 4096 : 2048, // Reduced to save tokens
       });
 
       const notes = completion.choices[0]?.message?.content || '';
