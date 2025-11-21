@@ -727,3 +727,78 @@
     justify-content: center;
   }
 }
+
+/* Mobile phones - Enhanced for Android */
+@media (max-width: 480px) {
+  .container {
+    padding: 0.75rem;
+  }
+
+  .header {
+    padding: 1.25rem 1rem;
+    margin-bottom: 2rem;
+    border-radius: 16px;
+  }
+
+  .header h1 {
+    font-size: 1.75rem;
+    line-height: 1.2;
+  }
+
+  .header p {
+    font-size: 1rem;
+  }
+
+  .card {
+    padding: 1.25rem;
+    border-radius: 16px;
+  }
+
+  .tabs {
+    padding: 0.375rem;
+  }
+
+  .tab {
+    padding: 0.75rem;
+    font-size: 0.9rem;
+  }
+
+  .input,
+  .textarea {
+    font-size: 16px;
+    padding: 0.875rem 1rem;
+  }
+
+  .fileInputLabel {
+    padding: 1rem;
+    font-size: 16px;
+    flex-direction: column;
+    text-align: center;
+    min-height: 70px;
+  }
+
+  .notesOutput {
+    padding: 1rem;
+    font-size: 0.9rem;
+  }
+
+  .notesOutput pre {
+    font-size: 0.85rem;
+  }
+
+  .navLink {
+    padding: 0.6rem 1rem;
+    font-size: 0.9rem;
+    flex: 1;
+    text-align: center;
+  }
+
+  .resultsHeader h2 {
+    font-size: 1.5rem;
+  }
+
+  .btn {
+    padding: 0.875rem 1.5rem;
+    font-size: 0.95rem;
+  }
+}
