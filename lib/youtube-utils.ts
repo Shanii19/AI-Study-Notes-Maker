@@ -3,7 +3,7 @@
  */
 
 import { YoutubeTranscript } from 'youtube-transcript';
-import ytdl from 'ytdl-core';
+import ytdl from '@distube/ytdl-core';
 import { createWriteStream } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -38,7 +38,44 @@ export async function fetchYouTubeTranscript(videoUrl: string): Promise<string> 
     console.log('Direct transcript fetch failed:', transcriptError);
   }
 
-  // 2. NEW FALLBACK: Download audio and transcribe using Groq Whisper
+  // 2. Try to get captions via ytdl-core (works even if main transcript library fails)
+  try {
+    console.log('Attempting to fetch captions via ytdl-core...');
+    const info = await ytdl.getInfo(videoUrl);
+
+    const captions = info.player_response?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+    if (captions && captions.length > 0) {
+      // Prefer English, then auto-generated English, then first available
+      const track = captions.find((c: any) => c.languageCode === 'en' && !c.kind) ||
+        captions.find((c: any) => c.languageCode === 'en') ||
+        captions[0];
+
+      if (track && track.baseUrl) {
+        console.log(`Found caption track: ${track.name?.simpleText || 'Unknown'} (${track.languageCode})`);
+        const response = await fetch(track.baseUrl);
+        const xml = await response.text();
+
+        // Simple regex to extract text from XML
+        // Format: <text start="0" dur="1">Hello</text>
+        const textMatches = xml.match(/<text[^>]*>([^<]+)<\/text>/g);
+
+        if (textMatches && textMatches.length > 0) {
+          const text = textMatches
+            .map(t => t.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&#39;/g, "'").replace(/&quot;/g, '"'))
+            .join(' ');
+
+          if (text && text.trim().length > 50) {
+            console.log(`Successfully extracted captions via ytdl, ${text.length} characters`);
+            return text;
+          }
+        }
+      }
+    }
+  } catch (ytdlError) {
+    console.log('ytdl-core caption fetch failed:', ytdlError);
+  }
+
+  // 3. Fallback: Download audio and transcribe using Groq Whisper
   // This handles videos without captions!
   let audioPath: string | null = null;
   try {
@@ -60,7 +97,7 @@ export async function fetchYouTubeTranscript(videoUrl: string): Promise<string> 
     }
   }
 
-  // 3. Secondary fallback: Try to get video info and use description via ytdl-core
+  // 4. Secondary fallback: Try to get video info and use description via ytdl-core
   try {
     console.log('Transcript not available, trying to get video information via ytdl-core...');
     const info = await ytdl.getInfo(videoUrl);
@@ -87,7 +124,7 @@ export async function fetchYouTubeTranscript(videoUrl: string): Promise<string> 
     console.error('ytdl-core failed:', error);
   }
 
-  // 4. Tertiary fallback: Raw HTML fetch (cheerio-style regex)
+  // 5. Tertiary fallback: Raw HTML fetch (cheerio-style regex)
   try {
     console.log('Trying raw HTML fetch for metadata...');
     const response = await fetch(videoUrl, {
@@ -132,40 +169,49 @@ export async function fetchYouTubeTranscript(videoUrl: string): Promise<string> 
  * Download audio from YouTube video
  */
 export async function downloadYouTubeAudio(videoUrl: string): Promise<string> {
+  const videoId = extractYouTubeId(videoUrl);
+  if (!videoId) {
+    throw new Error('Invalid YouTube URL');
+  }
+
+  const outputFormat = 'mp3';
+  const outputPath = join(tmpdir(), `${videoId}.${outputFormat}`);
+
   return new Promise((resolve, reject) => {
-    try {
-      const videoId = extractYouTubeId(videoUrl);
-      if (!videoId) {
-        reject(new Error('Invalid YouTube URL'));
-        return;
-      }
+    // Use robust options for ytdl to avoid bot detection
+    const stream = ytdl(videoUrl, {
+      quality: 'lowestaudio',
+      filter: 'audioonly',
+      requestOptions: {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        }
+      },
+      // @ts-ignore - distube/ytdl-core supports this but types might be outdated
+      client: {
+        clientName: 'ANDROID',
+        clientVersion: '17.31.35',
+      },
+    });
 
-      // Use mp3 extension for better compatibility with Whisper
-      const outputPath = join(tmpdir(), `youtube-audio-${videoId}-${Date.now()}.mp3`);
+    const writeStream = createWriteStream(outputPath);
 
-      // Get audio stream
-      const stream = ytdl(videoUrl, {
-        quality: 'lowestaudio',
-        filter: 'audioonly',
-      });
+    stream.pipe(writeStream);
 
-      const writeStream = createWriteStream(outputPath);
-      stream.pipe(writeStream);
+    stream.on('error', (err) => {
+      console.error('ytdl stream error:', err);
+      reject(err);
+    });
 
-      stream.on('error', (error) => {
-        reject(new Error(`Failed to download audio: ${error.message}`));
-      });
+    writeStream.on('finish', () => {
+      console.log(`Audio downloaded successfully to ${outputPath}`);
+      resolve(outputPath);
+    });
 
-      writeStream.on('finish', () => {
-        resolve(outputPath);
-      });
-
-      writeStream.on('error', (error) => {
-        reject(new Error(`Failed to save audio: ${error.message}`));
-      });
-    } catch (error) {
-      reject(new Error(`Failed to process YouTube video: ${error instanceof Error ? error.message : 'Unknown error'}`));
-    }
+    writeStream.on('error', (err) => {
+      console.error('File write error:', err);
+      reject(err);
+    });
   });
 }
 

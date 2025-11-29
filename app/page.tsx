@@ -4,8 +4,6 @@ import { useState, FormEvent, ChangeEvent, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import styles from './page.module.css';
-import { NoteMetadata } from '@/lib/types';
-import { saveNote, getNoteById, updateNote } from '@/lib/storage';
 import { jsPDF } from 'jspdf';
 
 interface ProcessingState {
@@ -18,7 +16,7 @@ interface ProcessingState {
 function HomeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const noteId = searchParams.get('id');
+  // const noteId = searchParams.get('id'); // Removed noteId retrieval
 
   // Input state
   const [inputType, setInputType] = useState<'pdf' | 'youtube' | 'video' | 'text'>('pdf');
@@ -29,16 +27,7 @@ function HomeContent() {
   const [generatedNotes, setGeneratedNotes] = useState('');
   const [error, setError] = useState('');
   const [copySuccess, setCopySuccess] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState(false);
-  const [showMetadataForm, setShowMetadataForm] = useState(false);
-  const [metadata, setMetadata] = useState<NoteMetadata>({
-    date: new Date().toISOString().split('T')[0],
-    subject: '',
-    tags: [],
-  });
-  const [tagInput, setTagInput] = useState('');
-  const [currentNoteId, setCurrentNoteId] = useState<string | null>(null);
-  const [sourceId, setSourceId] = useState<string>('');
+  // Removed saveSuccess, showMetadataForm, metadata, tagInput, currentNoteId, sourceId
   const [processingState, setProcessingState] = useState<ProcessingState>({
     isProcessing: false,
     isGenerating: false,
@@ -47,18 +36,7 @@ function HomeContent() {
   });
 
   // Load note from history if ID is in URL
-  useEffect(() => {
-    if (noteId) {
-      const savedNote = getNoteById(noteId);
-      if (savedNote) {
-        setGeneratedNotes(savedNote.notes);
-        setMetadata(savedNote.metadata);
-        setSourceId(savedNote.sourceId);
-        setCurrentNoteId(savedNote.id);
-        setShowMetadataForm(false); // Don't show form for reopened notes
-      }
-    }
-  }, [noteId]);
+  // Removed useEffect for loading note from history
 
   // File size limits
   const MAX_PDF_SIZE = 10 * 1024 * 1024; // 10MB
@@ -202,17 +180,8 @@ function HomeContent() {
       });
 
       setGeneratedNotes(generateData.notes);
-      setShowMetadataForm(true);
-      setCurrentNoteId(null); // Reset for new note
-
-      // Extract source ID based on input type
-      let extractedSourceId = '';
-      if (inputType === 'pdf') extractedSourceId = pdfFile?.name || 'unknown.pdf';
-      else if (inputType === 'youtube') extractedSourceId = youtubeUrl;
-      else if (inputType === 'video') extractedSourceId = videoFile?.name || 'unknown.mp4';
-      else if (inputType === 'text') extractedSourceId = 'pasted-text-' + Date.now();
-
-      setSourceId(extractedSourceId);
+      setChatMessages([]); // Reset chat history
+      // Removed metadata form and source ID logic
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
       console.error('Error in generateNotes:', err);
@@ -270,9 +239,8 @@ function HomeContent() {
       doc.setTextColor(100);
       const dateStr = `Generated on: ${new Date().toLocaleDateString()}`;
       doc.text(dateStr, margin, margin + 10);
-      if (metadata.subject) {
-        doc.text(`Subject: ${metadata.subject}`, margin, margin + 15);
-      }
+      doc.text(dateStr, margin, margin + 10);
+      // Removed subject from PDF
 
       // Content
       doc.setFontSize(12);
@@ -307,81 +275,76 @@ function HomeContent() {
     return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
   };
 
-  const handleAddTag = () => {
-    const tag = tagInput.trim();
-    if (tag && !metadata.tags.includes(tag)) {
-      setMetadata(prev => ({
-        ...prev,
-        tags: [...prev.tags, tag],
-      }));
-      setTagInput('');
-    }
-  };
+  // Removed handleAddTag, handleRemoveTag, handleSaveNote, handleEditMetadata
 
-  const handleRemoveTag = (tagToRemove: string) => {
-    setMetadata(prev => ({
-      ...prev,
-      tags: prev.tags.filter(tag => tag !== tagToRemove),
-    }));
-  };
+  const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [isChatLoading, setIsChatLoading] = useState(false);
+  const chatEndRef = useState<HTMLDivElement | null>(null);
 
-  const handleSaveNote = () => {
-    if (!metadata.subject.trim()) {
-      setError('Please enter a subject');
-      return;
+  // Scroll to bottom of chat
+  useEffect(() => {
+    const chatContainer = document.querySelector(`.${styles.chatMessages}`);
+    if (chatContainer) {
+      chatContainer.scrollTop = chatContainer.scrollHeight;
     }
+  }, [chatMessages]);
 
-    if (!generatedNotes.trim()) {
-      setError('No notes to save');
-      return;
-    }
+  const handleChatSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!chatInput.trim() || isChatLoading) return;
+
+    const userQuestion = chatInput.trim();
+    setChatInput('');
+
+    // Add user message
+    const newMessages = [
+      ...chatMessages,
+      { role: 'user' as const, content: userQuestion }
+    ];
+    setChatMessages(newMessages);
+    setIsChatLoading(true);
 
     try {
-      console.log('Saving note with:', { inputType, sourceId, subject: metadata.subject });
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          notes: generatedNotes,
+          messages: chatMessages, // Send history
+          question: userQuestion,
+        }),
+      });
 
-      if (currentNoteId) {
-        // Update existing note
-        console.log('Updating existing note:', currentNoteId);
-        updateNote(currentNoteId, {
-          metadata,
-          notes: generatedNotes,
-        });
-        setSaveSuccess(true);
-        setTimeout(() => setSaveSuccess(false), 2000);
-      } else {
-        // Save new note
-        console.log('Creating new note');
-        const saved = saveNote({
-          metadata,
-          notes: generatedNotes,
-          sourceType: inputType, // Use actual input type
-          sourceId,
-        });
-        console.log('Note saved successfully:', saved.id);
-        setCurrentNoteId(saved.id);
-        setSaveSuccess(true);
-        setShowMetadataForm(false);
-        setTimeout(() => setSaveSuccess(false), 2000);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to get response');
       }
-      setError('');
-    } catch (err) {
-      console.error('Error saving note:', err);
-      setError(err instanceof Error ? err.message : 'Failed to save note');
-    }
-  };
 
-  const handleEditMetadata = () => {
-    setShowMetadataForm(true);
+      setChatMessages([
+        ...newMessages,
+        { role: 'assistant', content: data.response }
+      ]);
+    } catch (err) {
+      console.error('Chat error:', err);
+      // Add error message
+      setChatMessages([
+        ...newMessages,
+        { role: 'assistant', content: 'Sorry, I encountered an error while processing your request. Please try again.' }
+      ]);
+    } finally {
+      setIsChatLoading(false);
+    }
   };
 
   return (
     <div className={styles.container}>
       <header className={styles.header}>
         <h1>AI Study Notes Maker</h1>
-        <p>Generate clean study notes from PDF files</p>
+        <p>Generate clean study notes from PDF, YouTube, Video, or Text</p>
         <nav className={styles.nav}>
           <Link href="/" className={styles.navLink}>Generator</Link>
-
         </nav>
       </header>
 
@@ -483,7 +446,7 @@ function HomeContent() {
                 id="videoFile"
                 type="file"
                 accept="video/*"
-                onChange={e => handleFileChange(e, setVideoFile, MAX_VIDEO_SIZE, ['mp4', 'mov', 'avi', 'webm'])}
+                onChange={e => handleFileChange(e, setVideoFile, MAX_VIDEO_SIZE, ['mp4', 'mov', 'avi', 'webm', 'ogg'])}
                 aria-label="Upload video file"
               />
               <label htmlFor="videoFile" className={styles.fileInputLabel}>
@@ -531,30 +494,101 @@ function HomeContent() {
       </form>
 
       {generatedNotes && (
-        <div className={styles.card}>
-          <div className={styles.resultsHeader}>
-            <h2>Generated Study Notes</h2>
-            <div className={styles.actions}>
-              <button onClick={() => generateNotes('easy')} className={styles.btn}>Easy</button>
-              <button onClick={() => generateNotes('medium')} className={styles.btn}>Medium</button>
-              <button onClick={() => generateNotes('detailed')} className={styles.btn}>Detailed</button>
-              <button onClick={handleCopy} className={`${styles.btn} ${styles.btnSecondary}`}>
-                {copySuccess ? 'Copied!' : 'Copy to Clipboard'}
-              </button>
-              <button onClick={handleDownload} className={`${styles.btn} ${styles.btnSecondary}`}>
-                Download Text
-              </button>
-              <button onClick={handleDownloadPdf} className={`${styles.btn} ${styles.btnSecondary}`}>
-                Save as PDF
-              </button>
+        <div className={styles.resultsContainer}>
+          {/* Notes Column */}
+          <div className={styles.notesColumn}>
+            <div className={styles.card}>
+              <div className={styles.resultsHeader}>
+                <h2>Generated Study Notes</h2>
+                <div className={styles.actions}>
+                  <button onClick={() => generateNotes('easy')} className={styles.btn}>Easy</button>
+                  <button onClick={() => generateNotes('medium')} className={styles.btn}>Medium</button>
+                  <button onClick={() => generateNotes('detailed')} className={styles.btn}>Detailed</button>
+                  <button onClick={handleCopy} className={`${styles.btn} ${styles.btnSecondary}`}>
+                    {copySuccess ? 'Copied!' : 'Copy to Clipboard'}
+                  </button>
+                  <button onClick={handleDownload} className={`${styles.btn} ${styles.btnSecondary}`}>
+                    Download Text
+                  </button>
+                  <button onClick={handleDownloadPdf} className={`${styles.btn} ${styles.btnSecondary}`}>
+                    Save as PDF
+                  </button>
+                </div>
+              </div>
 
+              <div className={styles.notesOutput}>
+                <pre>{generatedNotes}</pre>
+              </div>
             </div>
           </div>
 
+          {/* Chat Column */}
+          <div className={styles.chatColumn}>
+            <div className={styles.chatSection}>
+              <div className={styles.chatHeader}>
+                <h3>
+                  <span role="img" aria-label="chat">💬</span>
+                  Chat with your Notes
+                </h3>
+              </div>
 
+              <div className={styles.chatMessages}>
+                {chatMessages.length === 0 && (
+                  <div className={`${styles.message} ${styles.aiMessage}`}>
+                    <div className={`${styles.avatar} ${styles.aiAvatar}`}>AI</div>
+                    <div className={styles.messageContent}>
+                      Hi! I&apos;ve studied your notes. Feel free to ask me anything about them!
+                    </div>
+                  </div>
+                )}
 
-          <div className={styles.notesOutput}>
-            <pre>{generatedNotes}</pre>
+                {chatMessages.map((msg, index) => (
+                  <div
+                    key={index}
+                    className={`${styles.message} ${msg.role === 'user' ? styles.userMessage : styles.aiMessage}`}
+                  >
+                    <div className={`${styles.avatar} ${msg.role === 'user' ? styles.userAvatar : styles.aiAvatar}`}>
+                      {msg.role === 'user' ? 'U' : 'AI'}
+                    </div>
+                    <div className={styles.messageContent}>
+                      {msg.content}
+                    </div>
+                  </div>
+                ))}
+
+                {isChatLoading && (
+                  <div className={`${styles.message} ${styles.aiMessage}`}>
+                    <div className={`${styles.avatar} ${styles.aiAvatar}`}>AI</div>
+                    <div className={styles.messageContent}>
+                      <div className={styles.typingIndicator}>
+                        <div className={styles.typingDot}></div>
+                        <div className={styles.typingDot}></div>
+                        <div className={styles.typingDot}></div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <form onSubmit={handleChatSubmit} className={styles.chatInputArea}>
+                <input
+                  type="text"
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  placeholder="Ask a question..."
+                  className={styles.chatInput}
+                  disabled={isChatLoading}
+                />
+                <button
+                  type="submit"
+                  className={styles.sendBtn}
+                  disabled={!chatInput.trim() || isChatLoading}
+                  aria-label="Send message"
+                >
+                  ➤
+                </button>
+              </form>
+            </div>
           </div>
         </div>
       )}

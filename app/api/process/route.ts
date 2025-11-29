@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
           // Try one more time with direct ytdl approach
           try {
             console.log('Attempting direct video info extraction...');
-            const ytdl = require('ytdl-core');
+            const ytdl = require('@distube/ytdl-core');
             const info = await ytdl.getInfo(youtubeUrl);
 
             let fallbackText = '';

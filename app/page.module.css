@@ -136,7 +136,7 @@
 
 .navLink:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 30px var(--glow);
+  box-shadow: 0 10px 30px var(--primary-glow);
   border-color: var(--primary);
 }
 
@@ -204,9 +204,9 @@
 }
 
 .activeTab {
-  background: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
   color: white;
-  box-shadow: 0 4px 15px rgba(14, 165, 233, 0.4);
+  box-shadow: 0 4px 15px var(--primary-glow);
   transform: scale(1.02);
   backdrop-filter: blur(10px);
 }
@@ -215,24 +215,44 @@
   width: 100%;
 }
 
+/* Results Layout */
+.resultsContainer {
+  display: flex;
+  gap: 2rem;
+  margin-top: 2rem;
+  align-items: flex-start;
+}
+
+.notesColumn {
+  flex: 1.5;
+  min-width: 0;
+}
+
+.chatColumn {
+  flex: 1;
+  min-width: 0;
+  position: sticky;
+  top: 2rem;
+}
+
 /* Card */
 .card {
-  background: rgba(30, 41, 59, 0.6);
+  background: var(--glass);
   backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border-radius: 20px;
   padding: 2.5rem;
-  margin-bottom: 2rem;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-lg);
   animation: slideUp 0.5s ease-out 0.3s both;
   transition: all 0.3s ease;
+  height: 100%;
 }
 
 .card:hover {
   box-shadow: 0 15px 50px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1) inset;
   transform: translateY(-5px);
-  backdrop-filter: blur(25px);
-  border-color: rgba(14, 165, 233, 0.3);
+  border-color: var(--primary-light);
 }
 
 /* Input Group */
@@ -266,7 +286,7 @@
 .textarea {
   width: 100%;
   padding: 1rem 1.25rem;
-  background: var(--background);
+  background: var(--surface);
   border: 2px solid var(--border);
   border-radius: 12px;
   color: var(--text-primary);
@@ -279,7 +299,7 @@
 .input:focus,
 .textarea:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 4px var(--glow);
+  box-shadow: 0 0 0 4px var(--primary-glow);
   transform: translateY(-2px);
 }
 
@@ -312,7 +332,7 @@
   justify-content: center;
   gap: 0.75rem;
   padding: 1.5rem;
-  background: var(--background);
+  background: var(--surface);
   border: 2px dashed var(--border);
   border-radius: 12px;
   color: var(--text-secondary);
@@ -322,11 +342,10 @@
 }
 
 .fileInputLabel:hover {
-  border-color: #0ea5e9;
-  background: rgba(14, 165, 233, 0.1);
+  border-color: var(--primary);
+  background: rgba(99, 102, 241, 0.1);
   transform: scale(1.01);
-  box-shadow: 0 5px 20px rgba(14, 165, 233, 0.3);
-  backdrop-filter: blur(10px);
+  box-shadow: 0 5px 20px var(--primary-glow);
 }
 
 .fileName {
@@ -386,18 +405,15 @@
 }
 
 .btnPrimary {
-  background: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
   color: white;
-  box-shadow: 0 4px 15px rgba(14, 165, 233, 0.4);
+  box-shadow: 0 4px 15px var(--primary-glow);
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .btnPrimary:hover {
   transform: translateY(-3px);
-  box-shadow: 0 8px 25px rgba(14, 165, 233, 0.5);
-  background: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 8px 25px var(--primary-glow);
 }
 
 .btnPrimary:disabled {
@@ -414,16 +430,13 @@
 }
 
 .btnSecondary:hover {
-  background: rgba(14, 165, 233, 0.15);
-  border-color: rgba(14, 165, 233, 0.5);
-  color: #0ea5e9;
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--text-primary);
   transform: translateY(-3px);
-  box-shadow: 0 8px 25px rgba(14, 165, 233, 0.3);
-  backdrop-filter: blur(10px);
 }
 
 .btnSuccess {
-  background: linear-gradient(135deg, #10b981 0%, #14b8a6 100%);
+  background: linear-gradient(135deg, var(--secondary) 0%, var(--secondary-dark) 100%);
   color: white;
   box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -432,9 +445,6 @@
 .btnSuccess:hover {
   transform: translateY(-3px);
   box-shadow: 0 8px 25px rgba(16, 185, 129, 0.5);
-  background: linear-gradient(135deg, #10b981 0%, #14b8a6 100%);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
 /* Loading Spinner */
@@ -463,7 +473,7 @@
 .progress {
   width: 100%;
   height: 8px;
-  background: var(--background);
+  background: var(--surface);
   border-radius: 10px;
   overflow: hidden;
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
@@ -523,7 +533,7 @@
 .error {
   padding: 1rem 1.25rem;
   background: rgba(239, 68, 68, 0.1);
-  border: 1px solid var(--danger);
+  border: 1px solid var(--error);
   border-radius: 12px;
   color: #fca5a5;
   margin-bottom: 1.5rem;
@@ -657,7 +667,7 @@
 
 /* Notes Output */
 .notesOutput {
-  background: var(--background);
+  background: var(--surface);
   border-radius: 16px;
   padding: 2rem;
   border: 1px solid var(--border);
@@ -695,7 +705,222 @@
   margin: 0;
 }
 
-/* Responsive */
+/* Chat Interface */
+.chatSection {
+  margin-top: 0;
+  background: var(--glass);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 24px;
+  border: 1px solid var(--glass-border);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 700px;
+  box-shadow: var(--shadow-lg);
+  animation: slideUp 0.5s ease-out;
+}
+
+.chatHeader {
+  padding: 1.5rem;
+  background: rgba(15, 23, 42, 0.4);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.chatHeader h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.chatMessages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.message {
+  display: flex;
+  gap: 1rem;
+  max-width: 85%;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.userMessage {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+}
+
+.aiMessage {
+  align-self: flex-start;
+}
+
+.avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  flex-shrink: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.userAvatar {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  color: white;
+  border: none;
+}
+
+.aiAvatar {
+  background: linear-gradient(135deg, var(--secondary) 0%, var(--primary) 100%);
+  color: white;
+  border: none;
+}
+
+.messageContent {
+  padding: 1rem 1.25rem;
+  border-radius: 18px;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  position: relative;
+  word-wrap: break-word;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.userMessage .messageContent {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  color: white;
+  border-bottom-right-radius: 4px;
+}
+
+.aiMessage .messageContent {
+  background: var(--surface-light);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-bottom-left-radius: 4px;
+}
+
+.chatInputArea {
+  padding: 1.5rem;
+  background: rgba(15, 23, 42, 0.4);
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 1rem;
+}
+
+.chatInput {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 0.875rem 1.25rem;
+  color: var(--text-primary);
+  font-size: 1rem;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.chatInput:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px var(--primary-glow);
+  background: var(--background);
+}
+
+.sendBtn {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  color: white;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 10px var(--primary-glow);
+}
+
+.sendBtn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 15px var(--primary-glow);
+}
+
+.sendBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.typingIndicator {
+  display: flex;
+  gap: 4px;
+  padding: 0.5rem;
+}
+
+.typingDot {
+  width: 6px;
+  height: 6px;
+  background: var(--text-secondary);
+  border-radius: 50%;
+  animation: bounce 1.4s infinite ease-in-out both;
+}
+
+.typingDot:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.typingDot:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+@keyframes bounce {
+
+  0%,
+  80%,
+  100% {
+    transform: scale(0);
+  }
+
+  40% {
+    transform: scale(1);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .resultsContainer {
+    flex-direction: column;
+  }
+
+  .chatColumn {
+    position: static;
+    width: 100%;
+  }
+
+  .notesColumn {
+    width: 100%;
+  }
+
+  .chatSection {
+    height: 500px;
+  }
+}
+
 @media (max-width: 768px) {
   .container {
     padding: 1rem;
@@ -707,6 +932,7 @@
 
   .tabs {
     flex-direction: column;
+    gap: 0.5rem;
   }
 
   .tab {
@@ -720,85 +946,26 @@
 
   .actions {
     width: 100%;
+    flex-direction: column;
   }
 
   .btn {
-    flex: 1;
+    width: 100%;
     justify-content: center;
-  }
-}
-
-/* Mobile phones - Enhanced for Android */
-@media (max-width: 480px) {
-  .container {
-    padding: 0.75rem;
-  }
-
-  .header {
-    padding: 1.25rem 1rem;
-    margin-bottom: 2rem;
-    border-radius: 16px;
-  }
-
-  .header h1 {
-    font-size: 1.75rem;
-    line-height: 1.2;
-  }
-
-  .header p {
-    font-size: 1rem;
   }
 
   .card {
     padding: 1.25rem;
-    border-radius: 16px;
-  }
-
-  .tabs {
-    padding: 0.375rem;
-  }
-
-  .tab {
-    padding: 0.75rem;
-    font-size: 0.9rem;
   }
 
   .input,
   .textarea {
     font-size: 16px;
-    padding: 0.875rem 1rem;
+    /* Prevents zoom on iOS */
   }
 
   .fileInputLabel {
-    padding: 1rem;
-    font-size: 16px;
     flex-direction: column;
     text-align: center;
-    min-height: 70px;
-  }
-
-  .notesOutput {
-    padding: 1rem;
-    font-size: 0.9rem;
-  }
-
-  .notesOutput pre {
-    font-size: 0.85rem;
-  }
-
-  .navLink {
-    padding: 0.6rem 1rem;
-    font-size: 0.9rem;
-    flex: 1;
-    text-align: center;
-  }
-
-  .resultsHeader h2 {
-    font-size: 1.5rem;
-  }
-
-  .btn {
-    padding: 0.875rem 1.5rem;
-    font-size: 0.95rem;
   }
 }

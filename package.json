@@ -10,7 +10,7 @@
     "test": "jest"
   },
   "dependencies": {
-    "@google/generative-ai": "^0.2.1",
+    "@distube/ytdl-core": "^4.16.12",
     "adm-zip": "^0.5.10",
     "formidable": "^3.5.1",
     "fs-extra": "^11.2.0",
@@ -22,8 +22,8 @@
     "pdf-parse": "^1.1.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "youtube-transcript": "^1.2.1",
-    "ytdl-core": "^4.11.5"
+    "youtube-dl-exec": "^3.0.27",
+    "youtube-transcript": "^1.2.1"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.1.5",

@@ -75,23 +75,44 @@ async function extractAudioFromVideo(videoPath: string): Promise<string> {
 }
 
 /**
- * Transcribe audio file using Groq Whisper API
+ * Transcribe audio/video file using Groq Whisper API
  */
-export async function transcribeAudio(audioPath: string): Promise<string> {
+export async function transcribeAudio(filePath: string, originalFilename?: string): Promise<string> {
     try {
         const client = getGroqClient();
 
-        // Read the audio file
-        const audioBuffer = await readFile(audioPath);
+        // Read the file
+        const fileBuffer = await readFile(filePath);
+
+        // Determine mime type based on extension
+        const ext = (originalFilename || filePath).split('.').pop()?.toLowerCase() || 'mp3';
+        let mimeType = 'audio/mpeg';
+
+        const mimeTypes: Record<string, string> = {
+            'mp3': 'audio/mpeg',
+            'mp4': 'video/mp4',
+            'mpeg': 'video/mpeg',
+            'mpga': 'audio/mpeg',
+            'm4a': 'audio/mp4',
+            'wav': 'audio/wav',
+            'webm': 'video/webm',
+            'ogg': 'audio/ogg',
+            'flac': 'audio/flac'
+        };
+
+        if (mimeTypes[ext]) {
+            mimeType = mimeTypes[ext];
+        }
 
         // Create a File object from the buffer
-        const audioFile = new File([audioBuffer], 'audio.mp3', { type: 'audio/mpeg' });
+        // Note: The filename is important for the API to detect format
+        const fileObj = new File([fileBuffer], originalFilename || `audio.${ext}`, { type: mimeType });
 
-        console.log('Sending audio to Groq Whisper API...');
+        console.log(`Sending ${ext} file to Groq Whisper API...`);
 
         // Use Groq's Whisper API for transcription
         const transcription = await client.audio.transcriptions.create({
-            file: audioFile,
+            file: fileObj,
             model: 'whisper-large-v3', // Groq's Whisper model
             language: 'en', // You can change this or make it auto-detect
             response_format: 'text',
@@ -106,8 +127,8 @@ export async function transcribeAudio(audioPath: string): Promise<string> {
         // If it's an object with text property
         return (transcription as any).text || '';
     } catch (error) {
-        console.error('Error transcribing audio:', error);
-        throw new Error(`Failed to transcribe audio: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        console.error('Error transcribing file:', error);
+        throw new Error(`Failed to transcribe file: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
 }
 
@@ -116,11 +137,28 @@ export async function transcribeAudio(audioPath: string): Promise<string> {
  */
 export async function transcribeVideo(videoPath: string): Promise<string> {
     let audioPath: string | null = null;
+    const supportedDirectFormats = ['mp3', 'mp4', 'mpeg', 'mpga', 'm4a', 'wav', 'webm', 'ogg', 'flac'];
+    const ext = videoPath.split('.').pop()?.toLowerCase();
 
     try {
         console.log(`Starting video transcription for: ${videoPath}`);
 
-        // Step 1: Extract audio from video
+        // Try direct transcription first if format is supported
+        if (ext && supportedDirectFormats.includes(ext)) {
+            try {
+                console.log(`Format .${ext} is supported directly. Attempting direct transcription...`);
+                const transcription = await transcribeAudio(videoPath, `video.${ext}`);
+                if (transcription && transcription.trim().length > 0) {
+                    console.log(`Direct transcription successful: ${transcription.length} characters`);
+                    return transcription;
+                }
+            } catch (directError) {
+                console.warn('Direct transcription failed, falling back to FFmpeg extraction:', directError);
+                // Fall through to FFmpeg extraction
+            }
+        }
+
+        // Step 1: Extract audio from video (requires FFmpeg)
         audioPath = await extractAudioFromVideo(videoPath);
 
         // Step 2: Transcribe the audio

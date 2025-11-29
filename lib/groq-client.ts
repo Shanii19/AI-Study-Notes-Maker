@@ -148,38 +148,115 @@ Generate the study notes now.`;
 
     console.log(`Sending request to Groq (Model: llama-3.1-8b-instant, Input length: ${truncatedText.length} chars)...`);
 
-    try {
-      const completion = await client.chat.completions.create({
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
-        ],
-        model: 'llama-3.1-8b-instant', // Faster, more efficient model for free tier
-        temperature: 0.5,
-        max_tokens: detailLevel === 'detailed' ? 4096 : 2048, // Reduced to save tokens
-      });
+    const makeRequest = async (retries = 3, delay = 2000): Promise<string> => {
+      try {
+        const completion = await client.chat.completions.create({
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt },
+          ],
+          model: 'llama-3.1-8b-instant',
+          temperature: 0.5,
+          // Reduce max_tokens to avoid rate limits on free tier
+          // Input + Output must be < 6000 TPM
+          max_tokens: detailLevel === 'detailed' ? 2048 : 1024,
+        });
 
-      const notes = completion.choices[0]?.message?.content || '';
+        const notes = completion.choices[0]?.message?.content || '';
 
-      if (!notes || notes.trim().length === 0) {
-        throw new Error('Generated notes are empty');
+        if (!notes || notes.trim().length === 0) {
+          throw new Error('Generated notes are empty');
+        }
+
+        return notes;
+      } catch (error: any) {
+        if (error.status === 429) {
+          if (retries > 0) {
+            console.warn(`Rate limit hit. Retrying in ${delay}ms... (${retries} retries left)`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            return makeRequest(retries - 1, delay * 2);
+          }
+
+          // Retries exhausted, parse wait time
+          let waitMessage = "You have reached the API rate limit.";
+          const waitTimeMatch = error.message?.match(/try again in (\d+(\.\d+)?)s/);
+
+          if (waitTimeMatch) {
+            const seconds = parseFloat(waitTimeMatch[1]);
+            if (seconds > 60) {
+              const minutes = Math.ceil(seconds / 60);
+              waitMessage = `Rate limit reached. Please wait approximately ${minutes} minutes before trying again to reset your quota.`;
+            } else {
+              waitMessage = `Rate limit reached. Please wait ${Math.ceil(seconds)} seconds before trying again.`;
+            }
+          } else {
+            // Fallback for unknown quota limits (likely daily/hourly)
+            waitMessage = "Usage limit reached. Please wait 15-30 minutes for your quota to reset before trying again.";
+          }
+
+          throw new Error(waitMessage);
+        }
+        throw error;
       }
+    };
 
-      return notes;
-    } catch (apiError: any) {
-      console.error('Groq API Request Failed:', {
-        message: apiError.message,
-        type: apiError.type,
-        code: apiError.code,
-        param: apiError.param,
-      });
-      throw apiError;
-    }
+    return await makeRequest();
   } catch (error) {
     console.error('Groq API error:', error);
     if (error instanceof Error) {
       throw new Error(`Failed to generate notes: ${error.message}`);
     }
     throw new Error('Failed to generate notes: Unknown error');
+  }
+}
+
+export async function chatWithNotes(
+  notes: string,
+  messages: { role: 'user' | 'assistant'; content: string }[],
+  userQuestion: string
+): Promise<string> {
+  try {
+    const client = getClient();
+
+    const systemPrompt = `You are a helpful AI tutor. The user has some study notes and wants to ask questions about them.
+    
+Context (Study Notes):
+${notes}
+
+Instructions:
+1. Answer the user's question based PRIMARILY on the provided notes.
+2. If the answer is not in the notes, you can use your general knowledge but mention that it's outside the notes.
+3. Be concise, clear, and helpful.
+4. Use markdown for formatting if needed.`;
+
+    // Convert messages to OpenAI format
+    const conversationHistory = messages.map(msg => ({
+      role: msg.role,
+      content: msg.content
+    }));
+
+    // Add the new user question
+    conversationHistory.push({
+      role: 'user',
+      content: userQuestion
+    });
+
+    const completion = await client.chat.completions.create({
+      messages: [
+        { role: 'system', content: systemPrompt },
+        ...conversationHistory
+      ],
+      model: 'llama-3.1-8b-instant',
+      temperature: 0.7,
+      max_tokens: 1024,
+    });
+
+    return completion.choices[0]?.message?.content || 'I could not generate a response.';
+  } catch (error) {
+    console.error('Chat API error:', error);
+    if (error instanceof Error) {
+      throw new Error(`Failed to chat: ${error.message}`);
+    }
+    throw new Error('Failed to chat: Unknown error');
   }
 }
