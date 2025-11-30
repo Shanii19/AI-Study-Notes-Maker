@@ -27,12 +27,13 @@ export async function generateStudyNotes(
     const client = getClient();
 
     // Chunking strategy to avoid rate limits and ensure full coverage
-    // 15,000 characters is approx 3,500-4,000 tokens.
+    // 12,000 characters is approx 3,000 tokens.
     // Combined with ~1,000 output tokens, this stays under the 6,000 TPM limit per request.
-    const CHUNK_SIZE = 15000;
+    const CHUNK_SIZE = 12000;
+    const CHUNK_OVERLAP = 500; // Overlap to maintain context between chunks
     const chunks = [];
 
-    for (let i = 0; i < text.length; i += CHUNK_SIZE) {
+    for (let i = 0; i < text.length; i += (CHUNK_SIZE - CHUNK_OVERLAP)) {
       chunks.push(text.substring(i, i + CHUNK_SIZE));
     }
 
@@ -48,7 +49,17 @@ export async function generateStudyNotes(
       if (detailLevel === 'easy') {
         systemPrompt = `You are a helpful tutor creating easy-to-understand study notes. This is part ${i + 1} of ${chunks.length} of the content.`;
       } else if (detailLevel === 'detailed') {
-        systemPrompt = `You are an expert academic researcher. Create EXTREMELY DETAILED notes. This is part ${i + 1} of ${chunks.length}. Cover every detail in this section.`;
+        systemPrompt = `You are a meticulous academic archivist. Your goal is to create a VERBATIM-LEVEL COMPREHENSIVE record of the content.
+        
+CRITICAL INSTRUCTIONS FOR DETAILED MODE:
+1. **CAPTURE EVERYTHING**: Do not summarize or condense. If a concept is explained, write down the full explanation.
+2. **EVERY EXAMPLE**: Include every single example, analogy, or case study mentioned.
+3. **NUMBERS & DATA**: specific numbers, dates, formulas, or statistics MUST be preserved exactly.
+4. **NO SKIPPING**: Do not skip "introductory" or "side" remarks if they contain any context.
+5. **STRUCTURE**: Use nested bullet points to show the hierarchy of every single thought.
+6. **Completeness**: It is better to be too long than too short. The user wants to know EXACTLY what was said.
+
+This is part ${i + 1} of ${chunks.length}. Treat this chunk as a critical document that needs to be fully preserved in note form.`;
       } else {
         systemPrompt = `You are an expert study notes generator. Create clean, organized notes. This is part ${i + 1} of ${chunks.length}.`;
       }
@@ -86,7 +97,24 @@ Generate detailed study notes for THIS PART ONLY. Maintain formatting.`;
             }
 
             // If retries exhausted, try to fail gracefully for this chunk or throw
-            throw new Error(`Rate limit reached during processing. Please wait a moment and try again.`);
+            let waitMessage = "You have reached the API rate limit.";
+            const waitTimeMatch = error.message?.match(/try again in (\d+(\.\d+)?)s/);
+
+            if (waitTimeMatch) {
+              const seconds = parseFloat(waitTimeMatch[1]);
+              if (seconds > 60) {
+                const minutes = Math.ceil(seconds / 60);
+                waitMessage = `Rate limit reached. Please wait approximately ${minutes} minutes before trying again to reset your quota.`;
+              } else {
+                waitMessage = `Rate limit reached. Please wait ${Math.ceil(seconds)} seconds before trying again.`;
+              }
+            } else {
+              waitMessage = "Usage limit reached. Please wait 15-30 minutes for your quota to reset before trying again.";
+            }
+
+            const rateLimitError = new Error(waitMessage);
+            (rateLimitError as any).status = 429;
+            throw rateLimitError;
           }
           throw error;
         }
