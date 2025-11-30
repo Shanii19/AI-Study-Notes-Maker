@@ -76,7 +76,10 @@ export async function fetchYouTubeTranscript(videoUrl: string): Promise<string> 
   }
 
   // 3. Fallback: Download audio and transcribe using Groq Whisper
-  // This handles videos without captions!
+  // DISABLED for Vercel/Serverless stability. 
+  // ytdl-core often fails in serverless environments due to IP blocking, 
+  // and file system access is limited.
+  /*
   let audioPath: string | null = null;
   try {
     console.log('Attempting to download and transcribe audio (fallback)...');
@@ -96,6 +99,7 @@ export async function fetchYouTubeTranscript(videoUrl: string): Promise<string> 
       await cleanupAudioFile(audioPath);
     }
   }
+  */
 
   // 4. Secondary fallback: Try to get video info and use description via ytdl-core
   try {
@@ -104,9 +108,12 @@ export async function fetchYouTubeTranscript(videoUrl: string): Promise<string> 
 
     let text = '';
     if (info.videoDetails) {
-      if (info.videoDetails.title) {
-        text += `Video Title: ${info.videoDetails.title}\n\n`;
+      const title = info.videoDetails.title;
+      // Validate title to avoid generic YouTube pages
+      if (title && !title.includes('YouTube') && !title.includes('Before you continue')) {
+        text += `Video Title: ${title}\n\n`;
       }
+
       if (info.videoDetails.description) {
         const description = info.videoDetails.description;
         const maxDescLength = 10000;
@@ -139,11 +146,17 @@ export async function fetchYouTubeTranscript(videoUrl: string): Promise<string> 
     // Extract Title
     const titleMatch = html.match(/<meta name="title" content="([^"]*)"/);
     if (titleMatch && titleMatch[1]) {
-      text += `Video Title: ${titleMatch[1]}\n\n`;
+      const title = titleMatch[1];
+      if (!title.includes('YouTube') && !title.includes('Before you continue')) {
+        text += `Video Title: ${title}\n\n`;
+      }
     } else {
       const titleTagMatch = html.match(/<title>([^<]*)<\/title>/);
       if (titleTagMatch && titleTagMatch[1]) {
-        text += `Video Title: ${titleTagMatch[1].replace(' - YouTube', '')}\n\n`;
+        const title = titleTagMatch[1].replace(' - YouTube', '');
+        if (!title.includes('YouTube') && !title.includes('Before you continue')) {
+          text += `Video Title: ${title}\n\n`;
+        }
       }
     }
 
@@ -153,7 +166,7 @@ export async function fetchYouTubeTranscript(videoUrl: string): Promise<string> 
       text += `Video Description:\n${descMatch[1]}\n\n`;
     }
 
-    if (text.trim().length > 20) {
+    if (text.trim().length > 50) {
       console.log(`Using video title and description from raw HTML (${text.length} characters)`);
       return text + "\n\n[Note: Full transcript could not be retrieved. Notes are based on video title and description.]";
     }
@@ -162,7 +175,7 @@ export async function fetchYouTubeTranscript(videoUrl: string): Promise<string> 
   }
 
   // Final fallback: throw error with helpful message
-  throw new Error('Could not retrieve transcript or video description. Please ensure the video has captions enabled or try a different video.');
+  throw new Error('Could not retrieve transcript. Please ensure the video has captions enabled. (Note: Audio transcription is disabled on the web version for performance).');
 }
 
 /**
