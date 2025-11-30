@@ -969,3 +969,29 @@
     text-align: center;
   }
 }
+
+/* Footer */
+.footer {
+  margin-top: 3rem;
+  text-align: right;
+  padding: 1rem;
+  opacity: 0.8;
+  transition: opacity 0.3s ease;
+}
+
+.footer:hover {
+  opacity: 1;
+}
+
+.footer h3 {
+  font-family: 'Dancing Script', cursive;
+  font-size: 1.8rem;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0;
+  display: inline-block;
+  transform: rotate(-2deg);
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+}

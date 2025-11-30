@@ -592,6 +592,9 @@ function HomeContent() {
           </div>
         </div>
       )}
+      <div className={styles.footer}>
+        <h3>Developed by Shayan</h3>
+      </div>
     </div>
   );
 }
