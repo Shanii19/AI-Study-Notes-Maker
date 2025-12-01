@@ -92,8 +92,6 @@ export async function fetchYouTubeTranscript(videoUrl: string): Promise<string> 
   }
 
   // 3. Fallback: Download audio and transcribe using Groq Whisper
-  // DISABLED for Vercel/Serverless stability. 
-  /*
   let audioPath: string | null = null;
   try {
     console.log('Attempting to download and transcribe audio (fallback)...');
@@ -113,7 +111,6 @@ export async function fetchYouTubeTranscript(videoUrl: string): Promise<string> 
       await cleanupAudioFile(audioPath);
     }
   }
-  */
 
   // 4. Secondary fallback: Try to get video info and use description via ytdl-core
   try {

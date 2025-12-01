@@ -35,7 +35,6 @@ async function extractAudioFromVideo(videoPath: string): Promise<string> {
 
     try {
         // Check if ffmpeg is available
-        // Check if ffmpeg is available
         let ffmpegPath = 'ffmpeg';
         try {
             // Try to use ffmpeg-static if available
