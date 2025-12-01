@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  output: 'standalone',
   // Disable SWC minify if you encounter SWC binary errors
   // Uncomment the line below if SWC errors persist:
   // swcMinify: false,
