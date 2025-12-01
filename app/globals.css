@@ -9,65 +9,58 @@
 }
 
 :root {
-  /* New Floral Theme Palette */
+  /* Deep Space Aesthetic Palette */
 
   /* Palette Definition */
-  --ash-grey: #adbca5;
-  --powder-blush: #e8b9ab;
-  --light-coral: #e09891;
-  --sweet-peony: #cb769e;
-  --smoky-rose: #8c5f66;
+  --space-black: #0f172a;
+  --deep-blue: #1e293b;
+  --nebula-purple: #818cf8;
+  --starlight-blue: #38bdf8;
+  --cosmic-pink: #f472b6;
+  --moonlight: #f1f5f9;
 
-  /* Primary - Sweet Peony (Pink/Purple) */
-  --primary: var(--sweet-peony);
-  --primary-dark: #a65d80;
-  /* Darker Peony */
-  --primary-light: #d994b3;
-  /* Lighter Peony */
-  --primary-glow: rgba(203, 118, 158, 0.5);
+  /* Primary - Nebula Purple */
+  --primary: var(--nebula-purple);
+  --primary-dark: #6366f1;
+  --primary-light: #a5b4fc;
+  --primary-glow: rgba(129, 140, 248, 0.5);
 
-  /* Secondary - Ash Grey (Greenish) */
-  --secondary: var(--ash-grey);
-  --secondary-dark: #8a9684;
-  --secondary-light: #c4d1bc;
+  /* Secondary - Starlight Blue */
+  --secondary: var(--starlight-blue);
+  --secondary-dark: #0ea5e9;
+  --secondary-light: #7dd3fc;
 
-  /* Accent - Light Coral */
-  --accent: var(--light-coral);
-  --accent-glow: rgba(224, 152, 145, 0.4);
+  /* Accent - Cosmic Pink */
+  --accent: var(--cosmic-pink);
+  --accent-glow: rgba(244, 114, 182, 0.4);
 
-  /* Backgrounds - Smoky Rose Base (Darkened for readability) */
-  --background: #2d1e21;
-  /* Very dark smoky rose */
-  --surface: #462f33;
-  /* Dark smoky rose */
-  --surface-light: var(--smoky-rose);
-  --surface-lighter: var(--light-coral);
+  /* Backgrounds */
+  --background: var(--space-black);
+  --surface: var(--deep-blue);
+  --surface-light: #334155;
+  --surface-lighter: #475569;
 
-  /* Gradient using the palette */
-  --bg-gradient: radial-gradient(circle at top center, #462f33 0%, #2d1e21 100%);
+  /* Gradient */
+  --bg-gradient: radial-gradient(circle at top center, #1e293b 0%, #0f172a 100%);
 
   /* Text */
-  --text-primary: #fff0f5;
-  /* Lavender Blush (off-white) */
-  --text-secondary: var(--powder-blush);
-  --text-muted: #d0a0a0;
+  --text-primary: var(--moonlight);
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
   --text-highlight: #ffffff;
 
   /* UI Elements */
-  --border: rgba(232, 185, 171, 0.2);
-  /* Powder Blush transparent */
-  --border-hover: rgba(232, 185, 171, 0.4);
-  --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
-  --glass: rgba(70, 47, 51, 0.7);
-  /* Surface color transparent */
+  --border: rgba(148, 163, 184, 0.2);
+  --border-hover: rgba(148, 163, 184, 0.4);
+  --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.6), 0 4px 6px -2px rgba(0, 0, 0, 0.4);
+  --glass: rgba(30, 41, 59, 0.7);
   --glass-border: rgba(255, 255, 255, 0.1);
 
   /* Status */
-  --success: var(--ash-grey);
-  --error: #ef4444;
-  /* Keep standard red for critical errors */
-  --warning: var(--light-coral);
+  --success: #34d399;
+  --error: #f87171;
+  --warning: #fbbf24;
 
   /* Legacy/Compat */
   --primary-color: var(--primary);
