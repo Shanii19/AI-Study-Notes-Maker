@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'AI Study Notes Maker',
+  title: '✍🏻 AI Study Notes Maker',
   description: 'Generate clean study notes from YouTube videos, PDFs, documents, and more',
 };
 
