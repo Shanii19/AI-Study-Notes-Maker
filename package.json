@@ -12,6 +12,7 @@
   "dependencies": {
     "@distube/ytdl-core": "^4.16.12",
     "adm-zip": "^0.5.10",
+    "ffmpeg-static": "^5.2.0",
     "formidable": "^3.5.1",
     "fs-extra": "^11.2.0",
     "html2canvas": "^1.4.1",

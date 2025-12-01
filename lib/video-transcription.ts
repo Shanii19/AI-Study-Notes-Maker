@@ -35,11 +35,20 @@ async function extractAudioFromVideo(videoPath: string): Promise<string> {
 
     try {
         // Check if ffmpeg is available
+        // Check if ffmpeg is available
         let ffmpegPath = 'ffmpeg';
         try {
-            await execAsync('ffmpeg -version');
+            // Try to use ffmpeg-static if available
+            const ffmpegStatic = require('ffmpeg-static');
+            if (ffmpegStatic) {
+                ffmpegPath = ffmpegStatic;
+                console.log('Using ffmpeg-static:', ffmpegPath);
+            } else {
+                // Fallback to system ffmpeg
+                await execAsync('ffmpeg -version');
+            }
         } catch (error) {
-            // Try common Windows installation path
+            // Try common Windows installation path as last resort
             const commonPath = 'C:\\ffmpeg\\bin\\ffmpeg.exe';
             try {
                 const { stdout } = await execAsync(`"${commonPath}" -version`);
@@ -50,7 +59,8 @@ async function extractAudioFromVideo(videoPath: string): Promise<string> {
                     throw new Error('FFmpeg not found in PATH or common location');
                 }
             } catch (innerError) {
-                throw new Error('FFmpeg is not installed. Please install FFmpeg to process video files. Visit: https://ffmpeg.org/download.html');
+                console.error('FFmpeg detection failed:', innerError);
+                throw new Error('FFmpeg is not installed. Please install FFmpeg to process video files.');
             }
         }
 
