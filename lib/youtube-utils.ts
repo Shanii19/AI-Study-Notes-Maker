@@ -198,48 +198,65 @@ export async function downloadYouTubeAudio(videoUrl: string): Promise<string> {
     throw new Error('Invalid YouTube URL');
   }
 
-  // Dynamic import for ytdl-core
-  const ytdl = require('@distube/ytdl-core');
-
   const outputFormat = 'mp3';
   const outputPath = join(tmpdir(), `${videoId}.${outputFormat}`);
 
-  return new Promise((resolve, reject) => {
-    // Use robust options for ytdl to avoid bot detection
-    const stream = ytdl(videoUrl, {
-      quality: 'lowestaudio',
-      filter: 'audioonly',
-      requestOptions: {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        }
-      },
-      // @ts-ignore - distube/ytdl-core supports this but types might be outdated
-      client: {
-        clientName: 'ANDROID',
-        clientVersion: '17.31.35',
-      },
+  try {
+    // Try using youtube-dl-exec (more robust against YouTube changes)
+    console.log('Attempting download with youtube-dl-exec...');
+    const youtubedl = require('youtube-dl-exec');
+
+    await youtubedl(videoUrl, {
+      extractAudio: true,
+      audioFormat: 'mp3',
+      output: outputPath,
+      noCheckCertificates: true,
+      noWarnings: true,
+      preferFreeFormats: true,
     });
 
-    const writeStream = createWriteStream(outputPath);
+    console.log(`Audio downloaded successfully to ${outputPath}`);
+    return outputPath;
+  } catch (error) {
+    console.error('youtube-dl-exec failed, falling back to ytdl-core:', error);
 
-    stream.pipe(writeStream);
+    // Fallback to ytdl-core
+    const ytdl = require('@distube/ytdl-core');
+    return new Promise((resolve, reject) => {
+      const stream = ytdl(videoUrl, {
+        quality: 'lowestaudio',
+        filter: 'audioonly',
+        requestOptions: {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+          }
+        },
+        // @ts-ignore
+        client: {
+          clientName: 'ANDROID',
+          clientVersion: '17.31.35',
+        },
+      });
 
-    stream.on('error', (err: any) => {
-      console.error('ytdl stream error:', err);
-      reject(err);
+      const writeStream = createWriteStream(outputPath);
+      stream.pipe(writeStream);
+
+      stream.on('error', (err: any) => {
+        console.error('ytdl stream error:', err);
+        reject(err);
+      });
+
+      writeStream.on('finish', () => {
+        console.log(`Audio downloaded successfully to ${outputPath}`);
+        resolve(outputPath);
+      });
+
+      writeStream.on('error', (err: any) => {
+        console.error('File write error:', err);
+        reject(err);
+      });
     });
-
-    writeStream.on('finish', () => {
-      console.log(`Audio downloaded successfully to ${outputPath}`);
-      resolve(outputPath);
-    });
-
-    writeStream.on('error', (err: any) => {
-      console.error('File write error:', err);
-      reject(err);
-    });
-  });
+  }
 }
 
 /**
