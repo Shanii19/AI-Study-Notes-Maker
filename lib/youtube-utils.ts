@@ -41,7 +41,18 @@ export async function fetchYouTubeTranscript(videoUrl: string): Promise<string> 
   // 2. Try to get captions via ytdl-core (works even if main transcript library fails)
   try {
     console.log('Attempting to fetch captions via ytdl-core...');
-    const info = await ytdl.getInfo(videoUrl);
+    const info = await ytdl.getInfo(videoUrl, {
+      requestOptions: {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        }
+      },
+      // @ts-ignore
+      client: {
+        clientName: 'ANDROID',
+        clientVersion: '17.31.35',
+      },
+    });
 
     const captions = info.player_response?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
     if (captions && captions.length > 0) {
