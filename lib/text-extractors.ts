@@ -2,8 +2,6 @@
  * Text extraction functions for different file types
  */
 
-import pdfParse from 'pdf-parse';
-import mammoth from 'mammoth';
 import { readFile } from 'fs-extra';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -18,25 +16,26 @@ export async function extractTextFromPDF(filePath: string): Promise<string> {
     console.log(`Reading PDF file from: ${filePath}`);
     const dataBuffer = await readFile(filePath);
     console.log(`PDF file size: ${dataBuffer.length} bytes`);
-    
+
     if (dataBuffer.length === 0) {
       throw new Error('PDF file is empty');
     }
-    
+
     console.log('Parsing PDF content...');
+    const pdfParse = require('pdf-parse');
     const data = await pdfParse(dataBuffer);
-    
+
     if (!data || !data.text) {
       throw new Error('No text content found in PDF. The PDF might be image-based or corrupted.');
     }
-    
+
     const extractedText = data.text.trim();
     console.log(`Extracted ${extractedText.length} characters from PDF`);
-    
+
     if (extractedText.length === 0) {
       throw new Error('PDF appears to be empty or contains only images. Please use a PDF with selectable text.');
     }
-    
+
     return extractedText;
   } catch (error) {
     console.error('PDF extraction error:', error);
@@ -59,6 +58,7 @@ export async function extractTextFromPDF(filePath: string): Promise<string> {
  */
 export async function extractTextFromDOCX(filePath: string): Promise<string> {
   try {
+    const mammoth = require('mammoth');
     const result = await mammoth.extractRawText({ path: filePath });
     return result.value;
   } catch (error) {
@@ -76,14 +76,14 @@ export async function extractTextFromPPTX(filePath: string): Promise<string> {
     const AdmZip = require('adm-zip');
     const zip = new AdmZip(filePath);
     const zipEntries = zip.getEntries();
-    
+
     let text = '';
-    
+
     // Extract text from slide XML files
     for (const entry of zipEntries) {
       if (entry.entryName.startsWith('ppt/slides/slide') && entry.entryName.endsWith('.xml')) {
         const content = entry.getData().toString('utf8');
-        
+
         // Simple XML text extraction (remove tags and get text content)
         // This is a basic implementation - for production, use a proper XML parser
         const textMatches = content.match(/<a:t[^>]*>([^<]*)<\/a:t>/g);
@@ -97,7 +97,7 @@ export async function extractTextFromPPTX(filePath: string): Promise<string> {
         }
       }
     }
-    
+
     return text.trim() || 'No text found in presentation';
   } catch (error) {
     throw new Error(`Failed to extract text from PPTX: ${error instanceof Error ? error.message : 'Unknown error'}`);

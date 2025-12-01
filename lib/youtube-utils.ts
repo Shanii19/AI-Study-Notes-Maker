@@ -2,8 +2,8 @@
  * YouTube transcript and audio processing utilities
  */
 
-import { YoutubeTranscript } from 'youtube-transcript';
-import ytdl from '@distube/ytdl-core';
+// import { YoutubeTranscript } from 'youtube-transcript';
+// import ytdl from '@distube/ytdl-core';
 import { createWriteStream } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -21,14 +21,19 @@ export async function fetchYouTubeTranscript(videoUrl: string): Promise<string> 
     throw new Error('Invalid YouTube URL');
   }
 
+  // Dynamic import for ytdl-core
+  const ytdl = require('@distube/ytdl-core');
+
   // 1. Try to fetch transcript (library handles language detection automatically)
   try {
     console.log(`Attempting to fetch transcript for video ${videoId}...`);
 
+    // Dynamic import for youtube-transcript
+    const { YoutubeTranscript } = require('youtube-transcript');
     const transcriptItems = await YoutubeTranscript.fetchTranscript(videoId);
 
     if (transcriptItems && transcriptItems.length > 0) {
-      const text = transcriptItems.map(item => item.text).join(' ');
+      const text = transcriptItems.map((item: any) => item.text).join(' ');
       if (text && text.trim().length > 0) {
         console.log(`Successfully fetched transcript, ${text.length} characters`);
         return text;
@@ -72,7 +77,7 @@ export async function fetchYouTubeTranscript(videoUrl: string): Promise<string> 
 
         if (textMatches && textMatches.length > 0) {
           const text = textMatches
-            .map(t => t.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&#39;/g, "'").replace(/&quot;/g, '"'))
+            .map((t: string) => t.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&#39;/g, "'").replace(/&quot;/g, '"'))
             .join(' ');
 
           if (text && text.trim().length > 50) {
@@ -88,8 +93,6 @@ export async function fetchYouTubeTranscript(videoUrl: string): Promise<string> 
 
   // 3. Fallback: Download audio and transcribe using Groq Whisper
   // DISABLED for Vercel/Serverless stability. 
-  // ytdl-core often fails in serverless environments due to IP blocking, 
-  // and file system access is limited.
   /*
   let audioPath: string | null = null;
   try {
@@ -198,6 +201,9 @@ export async function downloadYouTubeAudio(videoUrl: string): Promise<string> {
     throw new Error('Invalid YouTube URL');
   }
 
+  // Dynamic import for ytdl-core
+  const ytdl = require('@distube/ytdl-core');
+
   const outputFormat = 'mp3';
   const outputPath = join(tmpdir(), `${videoId}.${outputFormat}`);
 
@@ -222,7 +228,7 @@ export async function downloadYouTubeAudio(videoUrl: string): Promise<string> {
 
     stream.pipe(writeStream);
 
-    stream.on('error', (err) => {
+    stream.on('error', (err: any) => {
       console.error('ytdl stream error:', err);
       reject(err);
     });
@@ -232,7 +238,7 @@ export async function downloadYouTubeAudio(videoUrl: string): Promise<string> {
       resolve(outputPath);
     });
 
-    writeStream.on('error', (err) => {
+    writeStream.on('error', (err: any) => {
       console.error('File write error:', err);
       reject(err);
     });
