@@ -70,38 +70,14 @@ export async function POST(request: NextRequest) {
         } catch (transcriptError) {
           console.error('YouTube processing error:', transcriptError);
 
-          // Try one more time with direct ytdl approach
-          try {
-            console.log('Attempting direct video info extraction...');
-            const ytdl = require('@distube/ytdl-core');
-            const info = await ytdl.getInfo(youtubeUrl);
-
-            let fallbackText = '';
-            if (info.videoDetails && info.videoDetails.title) {
-              fallbackText += `Video: ${info.videoDetails.title}\n\n`;
-            }
-            if (info.videoDetails && info.videoDetails.description) {
-              const desc = info.videoDetails.description;
-              fallbackText += desc.length > 5000 ? desc.substring(0, 5000) : desc;
-            }
-
-            if (fallbackText.trim().length > 10) {
-              console.log(`Using fallback text: ${fallbackText.length} characters`);
-              extractedText = fallbackText;
-            } else {
-              throw transcriptError; // Re-throw if fallback also failed
-            }
-          } catch (fallbackError) {
-            // Both methods failed
-            const errorMsg = transcriptError instanceof Error ? transcriptError.message : 'Unknown error';
-            return NextResponse.json(
-              {
-                error: `Unable to process YouTube video: ${errorMsg}`,
-                details: 'The video may not have captions enabled. Please try a video with captions or use a different source.'
-              },
-              { status: 400 }
-            );
-          }
+          const errorMsg = transcriptError instanceof Error ? transcriptError.message : 'Unknown error';
+          return NextResponse.json(
+            {
+              error: `Unable to process YouTube video: ${errorMsg}`,
+              details: 'Could not retrieve transcript or video details. Please check the URL or try a different video.'
+            },
+            { status: 400 }
+          );
         }
         break;
       }

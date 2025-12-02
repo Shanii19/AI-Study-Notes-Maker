@@ -1,19 +1,21 @@
 /**
  * YouTube transcript and audio processing utilities
+ * Updated to use YouTube Data API v3 for Vercel compatibility
  */
 
-// import { YoutubeTranscript } from 'youtube-transcript';
-// import ytdl from '@distube/ytdl-core';
-import { createWriteStream } from 'fs';
-import { join } from 'path';
-import { tmpdir } from 'os';
-import { unlink } from 'fs/promises';
 import { extractYouTubeId } from './utils';
-import { transcribeAudio } from './video-transcription';
 
 /**
- * Fetch transcript from YouTube video
- * Tries multiple languages and auto-generated captions
+ * Fetch transcript from YouTube video using YouTube Data API v3
+ * 
+ * Note: The official YouTube Data API v3 'captions' endpoint requires OAuth 2.0 for 
+ * downloading captions of third-party videos. API Key access is restricted.
+ * 
+ * Therefore, this implementation uses a hybrid approach:
+ * 1. Tries 'youtube-transcript' library first (scrapes transcript, works for most public videos)
+ * 2. If that fails, uses YouTube Data API v3 to fetch video Title and Description as a fallback.
+ * 
+ * This avoids downloading the video/audio (ytdl-core/ffmpeg) which fails on Vercel.
  */
 export async function fetchYouTubeTranscript(videoUrl: string): Promise<string> {
   const videoId = extractYouTubeId(videoUrl);
@@ -21,14 +23,12 @@ export async function fetchYouTubeTranscript(videoUrl: string): Promise<string> 
     throw new Error('Invalid YouTube URL');
   }
 
-  // Dynamic import for ytdl-core
-  const ytdl = require('@distube/ytdl-core');
-
-  // 1. Try to fetch transcript (library handles language detection automatically)
+  // 1. Try to fetch transcript using youtube-transcript library
+  // This is the most reliable way to get actual text without downloading video
   try {
     console.log(`Attempting to fetch transcript for video ${videoId}...`);
 
-    // Dynamic import for youtube-transcript
+    // Dynamic import to avoid build issues
     const { YoutubeTranscript } = require('youtube-transcript');
     const transcriptItems = await YoutubeTranscript.fetchTranscript(videoId);
 
@@ -43,241 +43,96 @@ export async function fetchYouTubeTranscript(videoUrl: string): Promise<string> 
     console.log('Direct transcript fetch failed:', transcriptError);
   }
 
-  // 2. Try to get captions via ytdl-core (works even if main transcript library fails)
+  // 2. Fallback: Use YouTube Data API v3 to get Video Title & Description
+  // This is 100% reliable with a valid API Key and works on Vercel
   try {
-    console.log('Attempting to fetch captions via ytdl-core...');
-    const info = await ytdl.getInfo(videoUrl, {
-      requestOptions: {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        }
-      },
-      // @ts-ignore
-      client: {
-        clientName: 'ANDROID',
-        clientVersion: '17.31.35',
-      },
-    });
+    console.log('Attempting to fetch video metadata via YouTube Data API v3...');
+    const apiKey = process.env.YOUTUBE_API_KEY;
 
-    const captions = info.player_response?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
-    if (captions && captions.length > 0) {
-      // Prefer English, then auto-generated English, then first available
-      const track = captions.find((c: any) => c.languageCode === 'en' && !c.kind) ||
-        captions.find((c: any) => c.languageCode === 'en') ||
-        captions[0];
-
-      if (track && track.baseUrl) {
-        console.log(`Found caption track: ${track.name?.simpleText || 'Unknown'} (${track.languageCode})`);
-        const response = await fetch(track.baseUrl);
-        const xml = await response.text();
-
-        // Simple regex to extract text from XML
-        // Format: <text start="0" dur="1">Hello</text>
-        const textMatches = xml.match(/<text[^>]*>([^<]+)<\/text>/g);
-
-        if (textMatches && textMatches.length > 0) {
-          const text = textMatches
-            .map((t: string) => t.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&#39;/g, "'").replace(/&quot;/g, '"'))
-            .join(' ');
-
-          if (text && text.trim().length > 50) {
-            console.log(`Successfully extracted captions via ytdl, ${text.length} characters`);
-            return text;
-          }
-        }
-      }
-    }
-  } catch (ytdlError) {
-    console.log('ytdl-core caption fetch failed:', ytdlError);
-  }
-
-  // 3. Fallback: Download audio and transcribe using Groq Whisper
-  let audioPath: string | null = null;
-  try {
-    console.log('Attempting to download and transcribe audio (fallback)...');
-    audioPath = await downloadYouTubeAudio(videoUrl);
-    console.log(`Audio downloaded to ${audioPath}, starting transcription...`);
-
-    const transcription = await transcribeAudio(audioPath);
-
-    if (transcription && transcription.trim().length > 50) {
-      console.log(`Successfully transcribed YouTube audio, ${transcription.length} characters`);
-      return transcription;
-    }
-  } catch (transcriptionError) {
-    console.error('Audio transcription fallback failed:', transcriptionError);
-  } finally {
-    if (audioPath) {
-      await cleanupAudioFile(audioPath);
-    }
-  }
-
-  // 4. Secondary fallback: Try to get video info and use description via ytdl-core
-  try {
-    console.log('Transcript not available, trying to get video information via ytdl-core...');
-    const info = await ytdl.getInfo(videoUrl);
-
-    let text = '';
-    if (info.videoDetails) {
-      const title = info.videoDetails.title;
-      // Validate title to avoid generic YouTube pages
-      if (title && !title.includes('YouTube') && !title.includes('Before you continue')) {
-        text += `Video Title: ${title}\n\n`;
-      }
-
-      if (info.videoDetails.description) {
-        const description = info.videoDetails.description;
-        const maxDescLength = 10000;
-        text += `Video Description:\n${description.length > maxDescLength
-          ? description.substring(0, maxDescLength) + '...'
-          : description}\n\n`;
-      }
+    if (!apiKey) {
+      throw new Error('YOUTUBE_API_KEY is not set in environment variables');
     }
 
-    if (text.trim().length > 50) {
-      console.log(`Using video title and description from ytdl (${text.length} characters)`);
-      return text + "\n\n[Note: Full transcript could not be retrieved. Notes are based on video title and description.]";
+    const apiUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${videoId}&key=${apiKey}`;
+    const response = await fetch(apiUrl);
+
+    if (!response.ok) {
+      throw new Error(`YouTube API error: ${response.status} ${response.statusText}`);
     }
-  } catch (error) {
-    console.error('ytdl-core failed:', error);
-  }
 
-  // 5. Tertiary fallback: Raw HTML fetch (cheerio-style regex)
-  try {
-    console.log('Trying raw HTML fetch for metadata...');
-    const response = await fetch(videoUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    const data = await response.json();
+
+    if (data.items && data.items.length > 0) {
+      const snippet = data.items[0].snippet;
+      const title = snippet.title;
+      const description = snippet.description;
+
+      let text = `Video Title: ${title}\n\n`;
+
+      if (description) {
+        // Limit description length to avoid token limits if it's huge
+        const maxDescLength = 5000;
+        text += `Video Description:\n${description.length > maxDescLength ? description.substring(0, maxDescLength) + '...' : description}\n\n`;
       }
-    });
-    const html = await response.text();
 
-    let text = '';
+      text += "\n[Note: Full transcript could not be retrieved. Notes are generated based on the video title and description.]";
 
-    // Extract Title
-    const titleMatch = html.match(/<meta name="title" content="([^"]*)"/);
-    if (titleMatch && titleMatch[1]) {
-      const title = titleMatch[1];
-      if (!title.includes('YouTube') && !title.includes('Before you continue')) {
-        text += `Video Title: ${title}\n\n`;
-      }
+      console.log(`Successfully fetched metadata via API, ${text.length} characters`);
+      return text;
     } else {
-      const titleTagMatch = html.match(/<title>([^<]*)<\/title>/);
-      if (titleTagMatch && titleTagMatch[1]) {
-        const title = titleTagMatch[1].replace(' - YouTube', '');
-        if (!title.includes('YouTube') && !title.includes('Before you continue')) {
-          text += `Video Title: ${title}\n\n`;
+      console.log('No video details found via API');
+    }
+  } catch (apiError) {
+    console.error('YouTube Data API fallback failed:', apiError);
+  }
+
+  // 3. Final Fallback: Attempt to use the 'captions' endpoint (Experimental)
+  // Note: This usually returns 403 Forbidden for API Keys on third-party videos, but implemented as requested.
+  try {
+    console.log('Attempting to list captions via YouTube Data API...');
+    const apiKey = process.env.YOUTUBE_API_KEY;
+    if (apiKey) {
+      const listUrl = `https://www.googleapis.com/youtube/v3/captions?part=snippet&videoId=${videoId}&key=${apiKey}`;
+      const listResp = await fetch(listUrl);
+
+      if (listResp.ok) {
+        const listData = await listResp.json();
+        if (listData.items && listData.items.length > 0) {
+          // Try to find an English track or the first one
+          const track = listData.items.find((i: any) => i.snippet.language === 'en') || listData.items[0];
+          const trackId = track.id;
+
+          console.log(`Found caption track ${trackId}, attempting download...`);
+
+          // Note: This download endpoint requires OAuth for third-party videos
+          const downloadUrl = `https://www.googleapis.com/youtube/v3/captions/${trackId}?key=${apiKey}`;
+          const downResp = await fetch(downloadUrl, {
+            headers: { 'Accept': 'application/json' } // Requesting JSON/SRT if possible
+          });
+
+          if (downResp.ok) {
+            const captionText = await downResp.text();
+            if (captionText && captionText.length > 50) {
+              return captionText;
+            }
+          } else {
+            console.log(`Caption download failed: ${downResp.status} (Expected 403 for API Key)`);
+          }
         }
       }
     }
-
-    // Extract Description
-    const descMatch = html.match(/<meta name="description" content="([^"]*)"/);
-    if (descMatch && descMatch[1]) {
-      text += `Video Description:\n${descMatch[1]}\n\n`;
-    }
-
-    if (text.trim().length > 50) {
-      console.log(`Using video title and description from raw HTML (${text.length} characters)`);
-      return text + "\n\n[Note: Full transcript could not be retrieved. Notes are based on video title and description.]";
-    }
-  } catch (htmlError) {
-    console.error('Raw HTML fetch failed:', htmlError);
+  } catch (e) {
+    console.log('Caption API flow failed', e);
   }
 
-  // Final fallback: throw error with helpful message
-  throw new Error('Could not retrieve transcript. Please ensure the video has captions enabled. (Note: Audio transcription is disabled on the web version for performance).');
+  throw new Error('Could not retrieve transcript. Please ensure the video has captions enabled or try a different video.');
 }
 
-/**
- * Download audio from YouTube video
- */
+// Deprecated/Removed functions (ytdl/ffmpeg) to ensure Vercel compatibility
 export async function downloadYouTubeAudio(videoUrl: string): Promise<string> {
-  const videoId = extractYouTubeId(videoUrl);
-  if (!videoId) {
-    throw new Error('Invalid YouTube URL');
-  }
-
-  const outputFormat = 'mp3';
-  const outputPath = join(tmpdir(), `${videoId}.${outputFormat}`);
-
-  try {
-    // Try using youtube-dl-exec (more robust against YouTube changes)
-    console.log('Attempting download with youtube-dl-exec...');
-    const youtubedl = require('youtube-dl-exec');
-
-    await youtubedl(videoUrl, {
-      extractAudio: true,
-      audioFormat: 'mp3',
-      output: outputPath,
-      noCheckCertificates: true,
-      noWarnings: true,
-      preferFreeFormats: true,
-    });
-
-    // Verify file exists (youtube-dl might append extension)
-    const fs = require('fs');
-    if (!fs.existsSync(outputPath)) {
-      if (fs.existsSync(`${outputPath}.mp3`)) {
-        // Rename if double extension occurred
-        const fsPromises = require('fs/promises');
-        await fsPromises.rename(`${outputPath}.mp3`, outputPath);
-      } else {
-        throw new Error('Downloaded file not found at expected path');
-      }
-    }
-
-    console.log(`Audio downloaded successfully to ${outputPath}`);
-    return outputPath;
-  } catch (error) {
-    console.error('youtube-dl-exec failed, falling back to ytdl-core:', error);
-
-    // Fallback to ytdl-core
-    const ytdl = require('@distube/ytdl-core');
-    return new Promise((resolve, reject) => {
-      const stream = ytdl(videoUrl, {
-        quality: 'lowestaudio',
-        filter: 'audioonly',
-        requestOptions: {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-          }
-        },
-        // @ts-ignore
-        client: {
-          clientName: 'ANDROID',
-          clientVersion: '17.31.35',
-        },
-      });
-
-      const writeStream = createWriteStream(outputPath);
-      stream.pipe(writeStream);
-
-      stream.on('error', (err: any) => {
-        console.error('ytdl stream error:', err);
-        reject(err);
-      });
-
-      writeStream.on('finish', () => {
-        console.log(`Audio downloaded successfully to ${outputPath}`);
-        resolve(outputPath);
-      });
-
-      writeStream.on('error', (err: any) => {
-        console.error('File write error:', err);
-        reject(err);
-      });
-    });
-  }
+  throw new Error('Audio download is disabled in this serverless environment.');
 }
 
-/**
- * Clean up downloaded audio file
- */
 export async function cleanupAudioFile(filePath: string): Promise<void> {
-  try {
-    await unlink(filePath);
-  } catch (error) {
-    console.error(`Failed to cleanup audio file ${filePath}:`, error);
-  }
+  // No-op
 }
