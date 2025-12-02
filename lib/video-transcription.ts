@@ -145,53 +145,28 @@ export async function transcribeAudio(filePath: string, originalFilename?: strin
  * Main function to transcribe video file
  */
 export async function transcribeVideo(videoPath: string): Promise<string> {
-    let audioPath: string | null = null;
     const supportedDirectFormats = ['mp3', 'mp4', 'mpeg', 'mpga', 'm4a', 'wav', 'webm', 'ogg', 'flac'];
     const ext = videoPath.split('.').pop()?.toLowerCase();
 
     try {
         console.log(`Starting video transcription for: ${videoPath}`);
 
-        // Try direct transcription first if format is supported
-        if (ext && supportedDirectFormats.includes(ext)) {
-            try {
-                console.log(`Format .${ext} is supported directly. Attempting direct transcription...`);
-                const transcription = await transcribeAudio(videoPath, `video.${ext}`);
-                if (transcription && transcription.trim().length > 0) {
-                    console.log(`Direct transcription successful: ${transcription.length} characters`);
-                    return transcription;
-                }
-            } catch (directError) {
-                console.warn('Direct transcription failed, falling back to FFmpeg extraction:', directError);
-                // Fall through to FFmpeg extraction
-            }
+        // Try direct transcription (Groq supports video files directly)
+        // We removed the FFmpeg fallback because it's not supported in the Vercel serverless environment
+        // without complex configuration. Groq's Whisper API handles most common video formats.
+
+        console.log(`Attempting direct transcription for .${ext} file...`);
+        const transcription = await transcribeAudio(videoPath, `video.${ext}`);
+
+        if (transcription && transcription.trim().length > 0) {
+            console.log(`Direct transcription successful: ${transcription.length} characters`);
+            return transcription;
         }
 
-        // Step 1: Extract audio from video (requires FFmpeg)
-        audioPath = await extractAudioFromVideo(videoPath);
-
-        // Step 2: Transcribe the audio
-        const transcription = await transcribeAudio(audioPath);
-
-        if (!transcription || transcription.trim().length === 0) {
-            throw new Error('No transcription generated. The video might not contain any speech.');
-        }
-
-        console.log(`Transcription completed: ${transcription.length} characters`);
-        return transcription;
+        throw new Error('No transcription generated. The video might not contain any speech or the format is not supported.');
     } catch (error) {
         console.error('Video transcription error:', error);
         throw error;
-    } finally {
-        // Clean up temporary audio file
-        if (audioPath) {
-            try {
-                await unlink(audioPath);
-                console.log('Cleaned up temporary audio file');
-            } catch (cleanupError) {
-                console.error('Failed to cleanup audio file:', cleanupError);
-            }
-        }
     }
 }
 
