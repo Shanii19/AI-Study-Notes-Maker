@@ -19,7 +19,7 @@ function HomeContent() {
   // const noteId = searchParams.get('id'); // Removed noteId retrieval
 
   // Input state
-  const [inputType, setInputType] = useState<'pdf' | 'youtube' | 'video' | 'text'>('pdf');
+  const [inputType, setInputType] = useState<'pdf' | 'youtube' | 'text'>('pdf');
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [youtubeUrl, setYoutubeUrl] = useState('');
@@ -367,12 +367,6 @@ function HomeContent() {
         >
           Paste Text
         </button>
-        <button
-          className={`${styles.tab} ${inputType === 'video' ? styles.activeTab : ''}`}
-          onClick={() => setInputType('video')}
-        >
-          Upload Video
-        </button>
       </div>
 
       <form onSubmit={handleSubmit} className={styles.card}>
@@ -433,33 +427,6 @@ function HomeContent() {
               className={styles.textarea}
               rows={10}
             />
-          </div>
-        )}
-
-        {inputType === 'video' && (
-          <div className={styles.inputGroup}>
-            <label htmlFor="videoFile" className={styles.label}>
-              Upload Video File
-            </label>
-            <div className={styles.fileInput}>
-              <input
-                id="videoFile"
-                type="file"
-                accept="video/*"
-                onChange={e => handleFileChange(e, setVideoFile, MAX_VIDEO_SIZE, ['mp4', 'mov', 'avi', 'webm', 'ogg'])}
-                aria-label="Upload video file"
-              />
-              <label htmlFor="videoFile" className={styles.fileInputLabel}>
-                {videoFile ? (
-                  <>
-                    <span className={styles.fileName}>{videoFile.name}</span>
-                    <span className={styles.fileSize}>({formatFileSize(videoFile.size)})</span>
-                  </>
-                ) : (
-                  'Click to select video file (max 4.5MB)'
-                )}
-              </label>
-            </div>
           </div>
         )}
 
