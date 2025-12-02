@@ -47,7 +47,7 @@ export async function generateStudyNotes(
 
       let systemPrompt = '';
       if (detailLevel === 'easy') {
-        systemPrompt = `You are a helpful tutor creating easy-to-understand study notes. This is part ${i + 1} of ${chunks.length} of the content.`;
+        systemPrompt = `You are a helpful tutor creating easy-to-understand study notes. This is part ${i + 1} of ${chunks.length} of the content. Focus on key concepts and simple explanations.`;
       } else if (detailLevel === 'detailed') {
         systemPrompt = `You are a meticulous academic archivist. Your goal is to create a VERBATIM-LEVEL COMPREHENSIVE record of the content.
         
@@ -58,6 +58,7 @@ CRITICAL INSTRUCTIONS FOR DETAILED MODE:
 4. **NO SKIPPING**: Do not skip "introductory" or "side" remarks if they contain any context.
 5. **STRUCTURE**: Use nested bullet points to show the hierarchy of every single thought.
 6. **Completeness**: It is better to be too long than too short. The user wants to know EXACTLY what was said.
+7. **EXPAND**: If a point is brief, expand on it using the context provided.
 
 This is part ${i + 1} of ${chunks.length}. Treat this chunk as a critical document that needs to be fully preserved in note form.`;
       } else {
@@ -82,9 +83,10 @@ Generate detailed study notes for THIS PART ONLY. Maintain formatting.`;
               { role: 'system', content: systemPrompt },
               { role: 'user', content: userPrompt },
             ],
-            model: 'llama-3.1-8b-instant',
-            temperature: 0.5,
-            max_tokens: detailLevel === 'detailed' ? 2048 : 1024,
+            // Use Llama 3.3 70B for better reasoning and detail
+            model: 'llama-3.3-70b-versatile',
+            temperature: 0.3, // Lower temperature for more factual/verbatim output
+            max_tokens: detailLevel === 'detailed' ? 6000 : 2048, // Increased limits
           });
 
           return completion.choices[0]?.message?.content || '';
@@ -95,8 +97,7 @@ Generate detailed study notes for THIS PART ONLY. Maintain formatting.`;
               await new Promise(resolve => setTimeout(resolve, delay));
               return makeRequest(retries - 1, delay * 2);
             }
-
-            // If retries exhausted, try to fail gracefully for this chunk or throw
+            // ... (rest of error handling remains the same)
             let waitMessage = "You have reached the API rate limit.";
             const waitTimeMatch = error.message?.match(/try again in (\d+(\.\d+)?)s/);
 
