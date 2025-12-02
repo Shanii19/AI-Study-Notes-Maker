@@ -11,8 +11,8 @@ import { writeFile } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
 
-// File size limits (50MB for videos, 10MB for documents)
-const MAX_VIDEO_SIZE = 50 * 1024 * 1024; // 50MB
+// File size limits (4.5MB for videos on Vercel, 10MB for documents)
+const MAX_VIDEO_SIZE = 4.5 * 1024 * 1024; // 4.5MB (Vercel serverless limit)
 const MAX_DOCUMENT_SIZE = 10 * 1024 * 1024; // 10MB
 
 // Configure body size limit for this route

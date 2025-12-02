@@ -40,7 +40,7 @@ function HomeContent() {
 
   // File size limits
   const MAX_PDF_SIZE = 10 * 1024 * 1024; // 10MB
-  const MAX_VIDEO_SIZE = 50 * 1024 * 1024; // 50MB
+  const MAX_VIDEO_SIZE = 4.5 * 1024 * 1024; // 4.5MB (Vercel serverless limit)
 
   const validateFile = (file: File, maxSize: number, allowedTypes: string[]): string | null => {
     const extension = file.name.split('.').pop()?.toLowerCase();
@@ -456,7 +456,7 @@ function HomeContent() {
                     <span className={styles.fileSize}>({formatFileSize(videoFile.size)})</span>
                   </>
                 ) : (
-                  'Click to select video file (max 50MB)'
+                  'Click to select video file (max 4.5MB)'
                 )}
               </label>
             </div>
